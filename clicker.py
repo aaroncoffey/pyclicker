@@ -13,6 +13,7 @@ ACTIVATE_KEY = u'k'
 DEACTIVATE_KEY = u'l'
 DELAY = 0.0334
 MOUSE_DELAY = 5
+TOGGLE_KEY = u'o'
 
 # Activate debugging output.
 DEBUG = False
@@ -24,6 +25,7 @@ clicking = False
 click_counter = 0
 total_clicks = 0
 click_start_time = 0
+toggled_on = False
 
 # Logging setup.
 log = logging.getLogger(__name__)
@@ -50,6 +52,8 @@ def on_press(key):
         elif key.char == DEACTIVATE_KEY and clicking:
             log.debug('Deactivation key was pressed and clicking is True.')
             clicking = False
+        elif key.char == TOGGLE_KEY and not clicking:
+            ClickForever(interval=5.0, only_toggle=True)
     except AttributeError:
         pass
 
@@ -96,18 +100,29 @@ def on_move(x, y):
 
 
 class ClickForever(object):
-    def __init__(self, interval=DELAY):
+    def __init__(self, interval=DELAY, only_toggle=False):
         self.interval = interval
-        thread = threading.Thread(target=self.run, args=())
+        thread = threading.Thread(target=self.run, args=[only_toggle])
         thread.daemon = True
         thread.start()
 
-    def run(self):
+    def run(self, only_toggle):
         """ Click forever, or until clicking is stopped. """
         global click_counter
         global total_clicks
         global click_stop_time
         global clicking
+        global toggled_on
+        if only_toggle:
+            if toggled_on:
+                cursor.release(Button.left)
+                toggled_on = False
+                print('release')
+                return
+            cursor.press(Button.left)
+            toggled_on = True
+            print('click')
+            return
         while True:
             if not clicking:
                 click_stop_time = int(time.time())
@@ -145,6 +160,7 @@ def main():
         DEACTIVATE_KEY.lower(),
         ' '*9
     ))
+    log.info('* When not clicking, hit "o" to toggle a click down, and again to click up.')
     log.info('* Hit Esc to quit.{0}*'.format(' '*61))
     log.info('* Current click delay is {0} seconds.{1}*'.format(DELAY, ' '*(45-len(str(DELAY)))))
     log.info('{0}'.format('*'*80))
